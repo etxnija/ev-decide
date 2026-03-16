@@ -3,8 +3,7 @@ import type { Vehicle } from "../types/vehicle";
 
 export type PartialVehicle = Partial<Omit<Vehicle, "id" | "image_url">>;
 
-const EXTRACTION_PROMPT = `Extract electric vehicle specifications from the text below and return ONLY a JSON object with these exact fields (use null for unknown values):
-{
+const JSON_SCHEMA = `{
   "make": string or null,
   "model": string or null,
   "variant": string or null,
@@ -21,19 +20,29 @@ const EXTRACTION_PROMPT = `Extract electric vehicle specifications from the text
   "length_mm": number or null,
   "width_mm": number or null,
   "weight_kg": number or null
-}
+}`;
+
+const EXTRACTION_PROMPT = `Extract electric vehicle specifications from the text below and return ONLY a JSON object with these exact fields (use null for unknown values):
+${JSON_SCHEMA}
 
 If a price is given in EUR or another currency, convert to SEK using rate 11.5. Return ONLY valid JSON, no explanation.
 
 Text:
 `;
 
+const URL_PROMPT = `A user wants to import electric vehicle specifications from this URL:
+{URL}
+
+Using your training knowledge about this vehicle model, extract its specifications and return ONLY a JSON object with these exact fields (use null for values you are not confident about):
+${JSON_SCHEMA}
+
+If the URL points to a specific variant, use that variant's specs. Convert prices to SEK if given in another currency (1 EUR ≈ 11.5 SEK). Return ONLY valid JSON, no explanation.`;
+
 export async function importVehicle(
   url: string,
   apiKey: string
 ): Promise<{ data: PartialVehicle; corsError: boolean }> {
   let text: string;
-  let corsError = false;
 
   try {
     const res = await fetch(url);
@@ -42,13 +51,13 @@ export async function importVehicle(
     text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ");
     text = text.replace(/<[^>]*>/g, " ");
     text = text.replace(/\s+/g, " ").trim().slice(0, 15000);
+    const data = await extractFromText(text, apiKey);
+    return { data, corsError: false };
   } catch {
-    corsError = true;
-    return { data: {}, corsError };
+    // CORS or network failure — ask Claude to use its training knowledge
+    const data = await extractFromUrl(url, apiKey);
+    return { data, corsError: false };
   }
-
-  const data = await extractFromText(text, apiKey);
-  return { data, corsError: false };
 }
 
 export async function extractFromText(
@@ -61,6 +70,29 @@ export async function extractFromText(
     model: "claude-haiku-4-5-20251001",
     max_tokens: 1024,
     messages: [{ role: "user", content: EXTRACTION_PROMPT + text }],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected response type");
+
+  const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in response");
+
+  return JSON.parse(jsonMatch[0]) as PartialVehicle;
+}
+
+export async function extractFromUrl(
+  url: string,
+  apiKey: string
+): Promise<PartialVehicle> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+
+  const message = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1024,
+    messages: [
+      { role: "user", content: URL_PROMPT.replace("{URL}", url) },
+    ],
   });
 
   const content = message.content[0];

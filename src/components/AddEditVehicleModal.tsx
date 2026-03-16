@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Vehicle } from "../types/vehicle";
-import { importVehicle, extractFromText } from "../lib/importVehicle";
+import { importVehicle } from "../lib/importVehicle";
 import type { PartialVehicle } from "../lib/importVehicle";
 
 interface Props {
@@ -78,8 +78,6 @@ export function AddEditVehicleModal({
 
   // Import state
   const [url, setUrl] = useState("");
-  const [pasteText, setPasteText] = useState("");
-  const [showPaste, setShowPaste] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
 
@@ -116,18 +114,11 @@ export function AddEditVehicleModal({
     setImporting(true);
     setImportError("");
     try {
-      const { data, corsError } = await importVehicle(url.trim(), apiKey);
-      if (corsError) {
-        setShowPaste(true);
-        setImportError(
-          "Could not fetch URL (CORS). Paste the page text below instead."
-        );
-      } else {
-        const { form: newForm, fields } = applyExtracted(data);
-        setForm(newForm);
-        setExtractedFields(fields);
-        setTab("manual");
-      }
+      const { data } = await importVehicle(url.trim(), apiKey);
+      const { form: newForm, fields } = applyExtracted(data);
+      setForm(newForm);
+      setExtractedFields(fields);
+      setTab("manual");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -135,26 +126,6 @@ export function AddEditVehicleModal({
     }
   }
 
-  async function handleExtractPaste() {
-    if (!pasteText.trim()) return;
-    if (!apiKey) {
-      setImportError("Set your Anthropic API key in settings first.");
-      return;
-    }
-    setImporting(true);
-    setImportError("");
-    try {
-      const data = await extractFromText(pasteText.trim(), apiKey);
-      const { form: newForm, fields } = applyExtracted(data);
-      setForm(newForm);
-      setExtractedFields(fields);
-      setTab("manual");
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Extraction failed");
-    } finally {
-      setImporting(false);
-    }
-  }
 
   function handleSave() {
     const id = isEdit
@@ -246,27 +217,6 @@ export function AddEditVehicleModal({
                 <p className="text-sm text-red-500">{importError}</p>
               )}
 
-              {showPaste && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-medium text-gray-500">
-                    Paste page text:
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={pasteText}
-                    onChange={(e) => setPasteText(e.target.value)}
-                    placeholder="Paste the text content of the vehicle page here…"
-                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
-                  />
-                  <button
-                    onClick={handleExtractPaste}
-                    disabled={importing || !pasteText.trim()}
-                    className="self-start px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {importing ? "Extracting…" : "Extract"}
-                  </button>
-                </div>
-              )}
 
               <p className="text-xs text-gray-400">
                 Or{" "}
