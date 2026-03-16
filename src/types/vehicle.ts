@@ -4,7 +4,7 @@ export interface Vehicle {
   model: string;
   variant: string;
   year: number;
-  price_eur: number;
+  price_sek: number;
   range_km: number;
   efficiency_kwh_per_100km: number;
   battery_kwh: number;
@@ -14,4 +14,7 @@ export interface Vehicle {
   cargo_l: number;
   seats: number;
   image_url: string;
+  length_mm: number | null;
+  width_mm: number | null;
+  weight_kg: number | null;
 }

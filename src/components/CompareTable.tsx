@@ -1,43 +1,134 @@
 import type { Vehicle } from "../types/vehicle";
+import { formatPrice, type Currency } from "../lib/formatPrice";
 
 interface CompareTableProps {
   vehicles: Vehicle[];
   onRemove: (id: string) => void;
+  currency: Currency;
+  exchangeRate: number;
+  scores: Map<string, number>;
+  notes: Record<string, string>;
 }
 
 type RowDef = {
   label: string;
-  key: keyof Vehicle;
-  format: (v: Vehicle) => string;
+  getValue: (v: Vehicle) => number | null;
+  format: (v: Vehicle, currency: Currency, rate: number) => string;
   best: "min" | "max" | null;
 };
 
-const rows: RowDef[] = [
-  { label: "Price", key: "price_eur", format: (v) => `€${v.price_eur.toLocaleString("de-DE")}`, best: "min" },
-  { label: "Range", key: "range_km", format: (v) => `${v.range_km} km`, best: "max" },
-  { label: "Efficiency", key: "efficiency_kwh_per_100km", format: (v) => `${v.efficiency_kwh_per_100km} kWh/100km`, best: "min" },
-  { label: "Battery", key: "battery_kwh", format: (v) => `${v.battery_kwh} kWh`, best: "max" },
-  { label: "DC Charging", key: "charge_dc_kw", format: (v) => `${v.charge_dc_kw} kW`, best: "max" },
-  { label: "AC Charging", key: "charge_ac_kw", format: (v) => `${v.charge_ac_kw} kW`, best: "max" },
-  { label: "0→80% time", key: "charge_0_80_min", format: (v) => `${v.charge_0_80_min} min`, best: "min" },
-  { label: "Cargo", key: "cargo_l", format: (v) => `${v.cargo_l} L`, best: "max" },
-  { label: "Seats", key: "seats", format: (v) => `${v.seats}`, best: "max" },
-  { label: "Year", key: "year", format: (v) => `${v.year}`, best: null },
-];
+function makeRows(): RowDef[] {
+  return [
+    {
+      label: "Price",
+      getValue: (v) => v.price_sek,
+      format: (v, currency, rate) => formatPrice(v.price_sek, currency, rate),
+      best: "min",
+    },
+    {
+      label: "Range",
+      getValue: (v) => v.range_km,
+      format: (v) => `${v.range_km} km`,
+      best: "max",
+    },
+    {
+      label: "Efficiency",
+      getValue: (v) => v.efficiency_kwh_per_100km,
+      format: (v) => `${v.efficiency_kwh_per_100km} kWh/100km`,
+      best: "min",
+    },
+    {
+      label: "Battery",
+      getValue: (v) => v.battery_kwh,
+      format: (v) => `${v.battery_kwh} kWh`,
+      best: "max",
+    },
+    {
+      label: "DC Charging",
+      getValue: (v) => v.charge_dc_kw,
+      format: (v) => `${v.charge_dc_kw} kW`,
+      best: "max",
+    },
+    {
+      label: "AC Charging",
+      getValue: (v) => v.charge_ac_kw,
+      format: (v) => `${v.charge_ac_kw} kW`,
+      best: "max",
+    },
+    {
+      label: "0→80% time",
+      getValue: (v) => v.charge_0_80_min,
+      format: (v) => `${v.charge_0_80_min} min`,
+      best: "min",
+    },
+    {
+      label: "Cargo",
+      getValue: (v) => v.cargo_l,
+      format: (v) => `${v.cargo_l} L`,
+      best: "max",
+    },
+    {
+      label: "Seats",
+      getValue: (v) => v.seats,
+      format: (v) => `${v.seats}`,
+      best: "max",
+    },
+    {
+      label: "Length",
+      getValue: (v) => v.length_mm,
+      format: (v) =>
+        v.length_mm ? `${Math.round(v.length_mm / 10)} cm` : "—",
+      best: null,
+    },
+    {
+      label: "Width",
+      getValue: (v) => v.width_mm,
+      format: (v) =>
+        v.width_mm ? `${Math.round(v.width_mm / 10)} cm` : "—",
+      best: null,
+    },
+    {
+      label: "Weight",
+      getValue: (v) => v.weight_kg,
+      format: (v) =>
+        v.weight_kg ? `${v.weight_kg.toLocaleString("sv-SE")} kg` : "—",
+      best: "min",
+    },
+    {
+      label: "Year",
+      getValue: (v) => v.year,
+      format: (v) => `${v.year}`,
+      best: null,
+    },
+  ];
+}
 
-function getBestId(vehicles: Vehicle[], row: RowDef): string | null {
+function getBestId(
+  vehicles: Vehicle[],
+  row: RowDef
+): string | null {
   if (row.best === null || vehicles.length < 2) return null;
-  const vals = vehicles.map((v) => ({ id: v.id, val: v[row.key] as number }));
+  const vals = vehicles
+    .map((v) => ({ id: v.id, val: row.getValue(v) }))
+    .filter((x): x is { id: string; val: number } => x.val !== null);
+  if (vals.length < 2) return null;
   const best = vals.reduce((a, b) =>
     row.best === "max" ? (b.val > a.val ? b : a) : (b.val < a.val ? b : a)
   );
-  // Only highlight if it's strictly better than all others
   const allSame = vals.every((v) => v.val === best.val);
   return allSame ? null : best.id;
 }
 
-export function CompareTable({ vehicles, onRemove }: CompareTableProps) {
+export function CompareTable({
+  vehicles,
+  onRemove,
+  currency,
+  exchangeRate,
+  scores,
+  notes,
+}: CompareTableProps) {
   if (vehicles.length === 0) return null;
+  const rows = makeRows();
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -49,7 +140,9 @@ export function CompareTable({ vehicles, onRemove }: CompareTableProps) {
               {vehicles.map((v) => (
                 <th key={v.id} className="p-4 text-center min-w-40">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-xs text-gray-400 uppercase tracking-wide">{v.make}</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-wide">
+                      {v.make}
+                    </span>
                     <span className="font-semibold text-gray-900">{v.model}</span>
                     <span className="text-xs text-gray-500">{v.variant}</span>
                     <button
@@ -64,10 +157,37 @@ export function CompareTable({ vehicles, onRemove }: CompareTableProps) {
             </tr>
           </thead>
           <tbody>
+            {/* Score row */}
+            {scores.size > 0 && (
+              <tr className="border-b border-gray-50 bg-gray-50">
+                <td className="p-4 text-gray-500 font-medium">Score</td>
+                {vehicles.map((v) => {
+                  const score = scores.get(v.id);
+                  const cls =
+                    score !== undefined
+                      ? score >= 70
+                        ? "text-green-700 font-bold"
+                        : score >= 40
+                        ? "text-amber-700 font-bold"
+                        : "text-red-600 font-bold"
+                      : "text-gray-400";
+                  return (
+                    <td key={v.id} className={`p-4 text-center ${cls}`}>
+                      {score !== undefined ? score : "—"}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
+
+            {/* Spec rows */}
             {rows.map((row) => {
               const bestId = getBestId(vehicles, row);
               return (
-                <tr key={row.key} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                <tr
+                  key={row.label}
+                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
+                >
                   <td className="p-4 text-gray-500 font-medium">{row.label}</td>
                   {vehicles.map((v) => {
                     const isWinner = bestId === v.id;
@@ -78,14 +198,26 @@ export function CompareTable({ vehicles, onRemove }: CompareTableProps) {
                           isWinner ? "text-green-700 bg-green-50" : "text-gray-800"
                         }`}
                       >
-                        {row.format(v)}
-                        {isWinner && <span className="ml-1 text-green-500 text-xs">★</span>}
+                        {row.format(v, currency, exchangeRate)}
+                        {isWinner && (
+                          <span className="ml-1 text-green-500 text-xs">★</span>
+                        )}
                       </td>
                     );
                   })}
                 </tr>
               );
             })}
+
+            {/* Notes row */}
+            <tr className="border-t border-gray-100">
+              <td className="p-4 text-gray-500 font-medium">Notes</td>
+              {vehicles.map((v) => (
+                <td key={v.id} className="p-4 text-center text-xs text-gray-500">
+                  {notes[v.id] || <span className="text-gray-300">—</span>}
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>

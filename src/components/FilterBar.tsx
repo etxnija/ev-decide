@@ -1,3 +1,5 @@
+import type { Currency } from "../lib/formatPrice";
+
 export interface Filters {
   maxPrice: number;
   minRange: number;
@@ -8,12 +10,27 @@ interface FilterBarProps {
   filters: Filters;
   onChange: (f: Filters) => void;
   allMakes: string[];
+  currency: Currency;
+  exchangeRate: number;
 }
 
-const MAX_PRICE = 100000;
+const MAX_PRICE_SEK = 1_500_000;
 const MAX_RANGE = 800;
 
-export function FilterBar({ filters, onChange, allMakes }: FilterBarProps) {
+function displayPrice(sek: number, currency: Currency, rate: number): string {
+  if (currency === "SEK") {
+    return `${Math.round(sek).toLocaleString("sv-SE")} kr`;
+  }
+  return `€${Math.round(sek / rate).toLocaleString("de-DE")}`;
+}
+
+export function FilterBar({
+  filters,
+  onChange,
+  allMakes,
+  currency,
+  exchangeRate,
+}: FilterBarProps) {
   function toggleMake(make: string) {
     const next = filters.makes.includes(make)
       ? filters.makes.filter((m) => m !== make)
@@ -22,11 +39,11 @@ export function FilterBar({ filters, onChange, allMakes }: FilterBarProps) {
   }
 
   function reset() {
-    onChange({ maxPrice: MAX_PRICE, minRange: 0, makes: [] });
+    onChange({ maxPrice: MAX_PRICE_SEK, minRange: 0, makes: [] });
   }
 
   const isFiltered =
-    filters.maxPrice < MAX_PRICE ||
+    filters.maxPrice < MAX_PRICE_SEK ||
     filters.minRange > 0 ||
     filters.makes.length > 0;
 
@@ -35,13 +52,16 @@ export function FilterBar({ filters, onChange, allMakes }: FilterBarProps) {
       {/* Price */}
       <div className="flex flex-col gap-1 min-w-48">
         <label className="text-xs font-medium text-gray-500">
-          Max price: <span className="text-gray-900">€{filters.maxPrice.toLocaleString("de-DE")}</span>
+          Max price:{" "}
+          <span className="text-gray-900">
+            {displayPrice(filters.maxPrice, currency, exchangeRate)}
+          </span>
         </label>
         <input
           type="range"
-          min={20000}
-          max={MAX_PRICE}
-          step={1000}
+          min={200_000}
+          max={MAX_PRICE_SEK}
+          step={10_000}
           value={filters.maxPrice}
           onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
           className="accent-blue-500"
