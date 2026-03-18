@@ -16,6 +16,7 @@ import {
   type ScoreWeights,
 } from "./lib/scoring";
 import type { Currency } from "./lib/formatPrice";
+import { useGistSync } from "./hooks/useGistSync";
 
 const MAX_COMPARE = 4;
 const LS_KEY_SELECTION = "ev-decide-selection";
@@ -24,6 +25,8 @@ const LS_KEY_SETTINGS = "ev-decide-settings";
 interface Settings {
   apiKey: string;
   exchangeRate: number;
+  gistId: string;
+  gistToken: string;
 }
 
 function loadSelection(): string[] {
@@ -39,15 +42,15 @@ function loadSettings(): Settings {
     const raw = localStorage.getItem(LS_KEY_SETTINGS);
     if (raw) return JSON.parse(raw) as Settings;
   } catch {}
-  return { apiKey: "", exchangeRate: 11.5 };
+  return { apiKey: "", exchangeRate: 11.5, gistId: "", gistToken: "" };
 }
 
 const DEFAULT_FILTERS: Filters = { maxPrice: 1_500_000, minRange: 0, makes: [] };
 
 export default function App() {
-  const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useVehicles();
-  const { notes, setNote } = useNotes();
-  const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry } =
+  const { vehicles, addVehicle, updateVehicle, deleteVehicle, replaceVehicles } = useVehicles();
+  const { notes, setNote, replaceNotes } = useNotes();
+  const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry, replaceEntries } =
     useCarbonIntensity();
 
   const [selected, setSelected] = useState<string[]>(loadSelection);
@@ -73,6 +76,25 @@ export default function App() {
   useEffect(() => {
     saveWeights(weights);
   }, [weights]);
+
+  const { status: syncStatus } = useGistSync(
+    settings.gistId,
+    settings.gistToken,
+    {
+      vehicles,
+      notes,
+      carbonIntensity: carbonEntries,
+      weights,
+      selection: selected,
+    },
+    {
+      replaceVehicles,
+      replaceNotes,
+      replaceEntries,
+      setWeights,
+      setSelected,
+    }
+  );
 
   const allMakes = useMemo(
     () => [...new Set(vehicles.map((v) => v.make))].sort(),
@@ -215,6 +237,29 @@ export default function App() {
               </button>
             )}
 
+            {/* Sync status badge */}
+            {settings.gistId && (
+              <span
+                className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  syncStatus === "synced"
+                    ? "bg-green-100 text-green-700"
+                    : syncStatus === "syncing"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : syncStatus === "offline"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {syncStatus === "synced"
+                  ? "Synced"
+                  : syncStatus === "syncing"
+                  ? "Syncing..."
+                  : syncStatus === "offline"
+                  ? "Offline"
+                  : "Idle"}
+              </span>
+            )}
+
             {/* Settings gear */}
             <button
               onClick={() => setShowSettings((s) => !s)}
@@ -264,6 +309,40 @@ export default function App() {
                   min={1}
                   className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
+              </div>
+              <div className="flex flex-col gap-1 min-w-64">
+                <label className="text-xs font-medium text-gray-500">
+                  GitHub Gist ID
+                </label>
+                <input
+                  type="text"
+                  value={settings.gistId}
+                  onChange={(e) =>
+                    setSettings((s) => ({ ...s, gistId: e.target.value.trim() }))
+                  }
+                  placeholder="e.g. a1b2c3d4e5f6…"
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                <p className="text-xs text-gray-400">
+                  Shared Gist ID for syncing between devices.
+                </p>
+              </div>
+              <div className="flex flex-col gap-1 min-w-64">
+                <label className="text-xs font-medium text-gray-500">
+                  GitHub PAT (gist scope)
+                </label>
+                <input
+                  type="password"
+                  value={settings.gistToken}
+                  onChange={(e) =>
+                    setSettings((s) => ({ ...s, gistToken: e.target.value.trim() }))
+                  }
+                  placeholder="ghp_…"
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                <p className="text-xs text-gray-400">
+                  Stored in your browser only, never sent to anyone else.
+                </p>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500">

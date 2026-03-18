@@ -25,5 +25,9 @@ export function useNotes() {
     return notes[id] ?? "";
   }
 
-  return { notes, setNote, getNote };
+  function replaceNotes(n: Record<string, string>) {
+    setNotes(n);
+  }
+
+  return { notes, setNote, getNote, replaceNotes };
 }

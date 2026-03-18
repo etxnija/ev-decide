@@ -45,5 +45,9 @@ export function useCarbonIntensity() {
     setEntries((prev) => prev.filter((e) => e.make !== make));
   }
 
-  return { entries, intensityMap, addEntry, updateEntry, deleteEntry };
+  function replaceEntries(c: CarbonEntry[]) {
+    setEntries(c);
+  }
+
+  return { entries, intensityMap, addEntry, updateEntry, deleteEntry, replaceEntries };
 }

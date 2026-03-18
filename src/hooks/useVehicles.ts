@@ -33,5 +33,9 @@ export function useVehicles() {
     setVehicles((prev) => prev.filter((v) => v.id !== id));
   }
 
-  return { vehicles, addVehicle, updateVehicle, deleteVehicle };
+  function replaceVehicles(v: Vehicle[]) {
+    setVehicles(v);
+  }
+
+  return { vehicles, addVehicle, updateVehicle, deleteVehicle, replaceVehicles };
 }
