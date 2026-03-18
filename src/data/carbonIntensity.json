@@ -1,0 +1,9 @@
+[
+  { "make": "Tesla",    "kg_co2e_500k": 30865 },
+  { "make": "BMW",      "kg_co2e_500k": 46081 },
+  { "make": "Mercedes", "kg_co2e_500k": 46359 },
+  { "make": "Volvo",    "kg_co2e_500k": 69423 },
+  { "make": "Kia",      "kg_co2e_500k": 73924 },
+  { "make": "Polestar", "kg_co2e_500k": 76312 },
+  { "make": "Toyota",   "kg_co2e_500k": 101979 }
+]

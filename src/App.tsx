@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 import type { Vehicle } from "./types/vehicle";
 import { useVehicles } from "./hooks/useVehicles";
 import { useNotes } from "./hooks/useNotes";
+import { useCarbonIntensity } from "./hooks/useCarbonIntensity";
 import { VehicleCard } from "./components/VehicleCard";
 import { FilterBar, type Filters } from "./components/FilterBar";
 import { CompareTable } from "./components/CompareTable";
 import { ScoreWeightsPanel } from "./components/ScoreWeightsPanel";
 import { AddEditVehicleModal } from "./components/AddEditVehicleModal";
+import { CarbonAdminModal } from "./components/CarbonAdminModal";
 import {
   computeScores,
   loadWeights,
@@ -45,6 +47,8 @@ const DEFAULT_FILTERS: Filters = { maxPrice: 1_500_000, minRange: 0, makes: [] }
 export default function App() {
   const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useVehicles();
   const { notes, setNote } = useNotes();
+  const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry } =
+    useCarbonIntensity();
 
   const [selected, setSelected] = useState<string[]>(loadSelection);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -53,6 +57,7 @@ export default function App() {
   const [weights, setWeights] = useState<ScoreWeights>(loadWeights);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCarbonAdmin, setShowCarbonAdmin] = useState(false);
   const [addEditTarget, setAddEditTarget] = useState<
     { mode: "add" } | { mode: "edit"; vehicle: Vehicle } | null
   >(null);
@@ -74,15 +79,22 @@ export default function App() {
     [vehicles]
   );
 
+  const scores = useMemo(
+    () => computeScores(vehicles, weights),
+    [vehicles, weights]
+  );
+
   const filtered = useMemo(() => {
-    return vehicles.filter((v) => {
-      if (v.price_sek > filters.maxPrice) return false;
-      if (v.range_km < filters.minRange) return false;
-      if (filters.makes.length > 0 && !filters.makes.includes(v.make))
-        return false;
-      return true;
-    });
-  }, [filters, vehicles]);
+    return vehicles
+      .filter((v) => {
+        if (v.price_sek > filters.maxPrice) return false;
+        if (v.range_km < filters.minRange) return false;
+        if (filters.makes.length > 0 && !filters.makes.includes(v.make))
+          return false;
+        return true;
+      })
+      .sort((a, b) => (scores.get(b.id) ?? -1) - (scores.get(a.id) ?? -1));
+  }, [filters, vehicles, scores]);
 
   const selectedVehicles = useMemo(
     () =>
@@ -90,11 +102,6 @@ export default function App() {
         .map((id) => vehicles.find((v) => v.id === id)!)
         .filter(Boolean),
     [selected, vehicles]
-  );
-
-  const scores = useMemo(
-    () => computeScores(vehicles, weights),
-    [vehicles, weights]
   );
 
   function toggleVehicle(id: string) {
@@ -118,6 +125,46 @@ export default function App() {
     } else {
       addVehicle(v);
     }
+  }
+
+  function recalcVehiclesForMake(
+    make: string,
+    oldKg: number | null,
+    newKg: number | null
+  ) {
+    const oldI = oldKg !== null ? oldKg / 500000 : null;
+    const newI = newKg !== null ? newKg / 500000 : null;
+    vehicles.forEach((v) => {
+      if (v.make !== make) return;
+      const wasAuto =
+        oldI === null
+          ? v.carbon_kg_co2e === null
+          : v.carbon_kg_co2e === Math.round(v.price_sek * oldI);
+      if (!wasAuto) return;
+      updateVehicle({
+        ...v,
+        carbon_kg_co2e: newI !== null ? Math.round(v.price_sek * newI) : null,
+      });
+    });
+  }
+
+  function handleCarbonUpdate(make: string, newKg: number) {
+    const existing = carbonEntries.find((e) => e.make === make);
+    const oldKg = existing ? existing.kg_co2e_500k : null;
+    updateEntry(make, newKg);
+    recalcVehiclesForMake(make, oldKg, newKg);
+  }
+
+  function handleCarbonDelete(make: string) {
+    const existing = carbonEntries.find((e) => e.make === make);
+    const oldKg = existing ? existing.kg_co2e_500k : null;
+    deleteEntry(make);
+    recalcVehiclesForMake(make, oldKg, null);
+  }
+
+  function handleCarbonAdd(entry: { make: string; kg_co2e_500k: number }) {
+    addEntry(entry);
+    recalcVehiclesForMake(entry.make, null, entry.kg_co2e_500k);
   }
 
   const existingIds = useMemo(() => vehicles.map((v) => v.id), [vehicles]);
@@ -218,6 +265,17 @@ export default function App() {
                   className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500">
+                  Carbon data
+                </label>
+                <button
+                  onClick={() => setShowCarbonAdmin(true)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  Manage brands ({carbonEntries.length})
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -299,6 +357,18 @@ export default function App() {
           onClose={() => setAddEditTarget(null)}
           apiKey={settings.apiKey}
           existingIds={existingIds}
+          intensityMap={intensityMap}
+        />
+      )}
+
+      {/* Carbon admin modal */}
+      {showCarbonAdmin && (
+        <CarbonAdminModal
+          entries={carbonEntries}
+          onAdd={handleCarbonAdd}
+          onUpdate={handleCarbonUpdate}
+          onDelete={handleCarbonDelete}
+          onClose={() => setShowCarbonAdmin(false)}
         />
       )}
     </div>

@@ -10,6 +10,7 @@ interface Props {
   onClose: () => void;
   apiKey: string;
   existingIds: string[];
+  intensityMap: Record<string, number>;
 }
 
 type Tab = "import" | "manual";
@@ -70,6 +71,7 @@ export function AddEditVehicleModal({
   onClose,
   apiKey,
   existingIds,
+  intensityMap,
 }: Props) {
   const isEdit = !!vehicle;
   const [tab, setTab] = useState<Tab>(isEdit ? "manual" : "import");
@@ -87,7 +89,7 @@ export function AddEditVehicleModal({
   // Auto-calculate carbon when make or price changes
   useEffect(() => {
     if (carbonManuallySet) return;
-    const auto = calcCarbon(form.make, form.price_sek);
+    const auto = calcCarbon(form.make, form.price_sek, intensityMap);
     setForm((prev) => ({ ...prev, carbon_kg_co2e: auto }));
   }, [form.make, form.price_sek, carbonManuallySet]);
 
