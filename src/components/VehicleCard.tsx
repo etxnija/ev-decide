@@ -143,6 +143,12 @@ export function VehicleCard({
             <span>{vehicle.weight_kg.toLocaleString("sv-SE")} kg</span>
           </>
         )}
+        {vehicle.carbon_kg_co2e !== null && vehicle.carbon_kg_co2e !== undefined && (
+          <>
+            <span>·</span>
+            <span>{vehicle.carbon_kg_co2e.toLocaleString("sv-SE")} kg CO₂e</span>
+          </>
+        )}
       </div>
 
       {/* Notes */}

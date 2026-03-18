@@ -17,7 +17,8 @@
     "image_url": "",
     "length_mm": 4694,
     "width_mm": 1849,
-    "weight_kg": 1761
+    "weight_kg": 1761,
+    "carbon_kg_co2e": 30550
   },
   {
     "id": "tesla-model-3-lr-2024",
@@ -37,7 +38,8 @@
     "image_url": "",
     "length_mm": 4694,
     "width_mm": 1849,
-    "weight_kg": 1828
+    "weight_kg": 1828,
+    "carbon_kg_co2e": 37649
   },
   {
     "id": "tesla-model-y-rwd-2024",
@@ -57,7 +59,8 @@
     "image_url": "",
     "length_mm": 4751,
     "width_mm": 1921,
-    "weight_kg": 1979
+    "weight_kg": 1979,
+    "carbon_kg_co2e": 31970
   },
   {
     "id": "vw-id4-pro-2024",
@@ -77,7 +80,8 @@
     "image_url": "",
     "length_mm": 4584,
     "width_mm": 1852,
-    "weight_kg": 2124
+    "weight_kg": 2124,
+    "carbon_kg_co2e": null
   },
   {
     "id": "vw-id3-pro-2024",
@@ -97,7 +101,8 @@
     "image_url": "",
     "length_mm": 4261,
     "width_mm": 1809,
-    "weight_kg": 1719
+    "weight_kg": 1719,
+    "carbon_kg_co2e": null
   },
   {
     "id": "bmw-i4-edrive40-2024",
@@ -117,7 +122,8 @@
     "image_url": "",
     "length_mm": 4783,
     "width_mm": 1852,
-    "weight_kg": 2050
+    "weight_kg": 2050,
+    "carbon_kg_co2e": 63490
   },
   {
     "id": "hyundai-ioniq6-rwd-2024",
@@ -137,7 +143,8 @@
     "image_url": "",
     "length_mm": 4855,
     "width_mm": 1880,
-    "weight_kg": 1965
+    "weight_kg": 1965,
+    "carbon_kg_co2e": null
   },
   {
     "id": "hyundai-ioniq5-rwd-2024",
@@ -157,7 +164,8 @@
     "image_url": "",
     "length_mm": 4635,
     "width_mm": 1890,
-    "weight_kg": 1985
+    "weight_kg": 1985,
+    "carbon_kg_co2e": null
   },
   {
     "id": "kia-ev6-rwd-2024",
@@ -177,7 +185,8 @@
     "image_url": "",
     "length_mm": 4695,
     "width_mm": 1890,
-    "weight_kg": 1960
+    "weight_kg": 1960,
+    "carbon_kg_co2e": 79084
   },
   {
     "id": "polestar-2-lr-2024",
@@ -197,7 +206,8 @@
     "image_url": "",
     "length_mm": 4606,
     "width_mm": 1859,
-    "weight_kg": 2005
+    "weight_kg": 2005,
+    "carbon_kg_co2e": 86065
   },
   {
     "id": "mercedes-eqb-300-2024",
@@ -217,7 +227,8 @@
     "image_url": "",
     "length_mm": 4684,
     "width_mm": 1834,
-    "weight_kg": 2105
+    "weight_kg": 2105,
+    "carbon_kg_co2e": 58644
   },
   {
     "id": "audi-q4-etron-40-2024",
@@ -237,7 +248,8 @@
     "image_url": "",
     "length_mm": 4588,
     "width_mm": 1865,
-    "weight_kg": 2135
+    "weight_kg": 2135,
+    "carbon_kg_co2e": null
   },
   {
     "id": "renault-megane-ev60-2024",
@@ -257,6 +269,7 @@
     "image_url": "",
     "length_mm": 4200,
     "width_mm": 1768,
-    "weight_kg": 1624
+    "weight_kg": 1624,
+    "carbon_kg_co2e": null
   }
 ]

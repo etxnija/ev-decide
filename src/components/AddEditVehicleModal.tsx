@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Vehicle } from "../types/vehicle";
 import { importVehicle } from "../lib/importVehicle";
 import type { PartialVehicle } from "../lib/importVehicle";
+import { calcCarbon } from "../lib/carbonIntensity";
 
 interface Props {
   vehicle?: Vehicle;
@@ -32,6 +33,7 @@ const EMPTY_FORM: FormData = {
   length_mm: null,
   width_mm: null,
   weight_kg: null,
+  carbon_kg_co2e: null,
 };
 
 function generateId(form: FormData, existingIds: string[]): string {
@@ -75,11 +77,19 @@ export function AddEditVehicleModal({
     isEdit ? { ...vehicle } : { ...EMPTY_FORM }
   );
   const [extractedFields, setExtractedFields] = useState<Set<string>>(new Set());
+  const [carbonManuallySet, setCarbonManuallySet] = useState(false);
 
   // Import state
   const [url, setUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
+
+  // Auto-calculate carbon when make or price changes
+  useEffect(() => {
+    if (carbonManuallySet) return;
+    const auto = calcCarbon(form.make, form.price_sek);
+    setForm((prev) => ({ ...prev, carbon_kg_co2e: auto }));
+  }, [form.make, form.price_sek, carbonManuallySet]);
 
   function setField<K extends keyof FormData>(key: K, raw: string) {
     const numericKeys: (keyof FormData)[] = [
@@ -96,6 +106,7 @@ export function AddEditVehicleModal({
       "length_mm",
       "width_mm",
       "weight_kg",
+      "carbon_kg_co2e",
     ];
     if (numericKeys.includes(key)) {
       const parsed = raw === "" ? null : Number(raw);
@@ -435,6 +446,38 @@ export function AddEditVehicleModal({
                     value={form.weight_kg ?? ""}
                     onChange={(e) => setField("weight_kg", e.target.value)}
                     className={inputClass("weight_kg")}
+                    min={0}
+                    placeholder="optional"
+                  />
+                </div>
+
+                {/* Carbon */}
+                <div className="flex flex-col gap-1 col-span-2">
+                  <label className="text-xs font-medium text-gray-500">
+                    Carbon footprint (kg CO₂e)
+                    {!carbonManuallySet && (
+                      <span className="ml-1 text-blue-500 font-normal">· auto-calculated from corporate emissions data</span>
+                    )}
+                    {carbonManuallySet && (
+                      <span className="ml-1 text-amber-500 font-normal">· manually set —{" "}
+                        <button
+                          type="button"
+                          onClick={() => setCarbonManuallySet(false)}
+                          className="underline hover:text-amber-700"
+                        >
+                          reset to auto
+                        </button>
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    value={form.carbon_kg_co2e ?? ""}
+                    onChange={(e) => {
+                      setCarbonManuallySet(true);
+                      setField("carbon_kg_co2e", e.target.value);
+                    }}
+                    className={inputClass("carbon_kg_co2e")}
                     min={0}
                     placeholder="optional"
                   />

@@ -17,4 +17,5 @@ export interface Vehicle {
   length_mm: number | null;
   width_mm: number | null;
   weight_kg: number | null;
+  carbon_kg_co2e: number | null;
 }

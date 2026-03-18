@@ -95,6 +95,15 @@ function makeRows(): RowDef[] {
       best: "min",
     },
     {
+      label: "Carbon",
+      getValue: (v) => v.carbon_kg_co2e,
+      format: (v) =>
+        v.carbon_kg_co2e !== null && v.carbon_kg_co2e !== undefined
+          ? `${v.carbon_kg_co2e.toLocaleString("sv-SE")} kg CO₂e`
+          : "—",
+      best: "min",
+    },
+    {
       label: "Year",
       getValue: (v) => v.year,
       format: (v) => `${v.year}`,

@@ -6,6 +6,7 @@ export interface ScoreWeights {
   efficiency: number;
   dcCharge: number;
   cargo: number;
+  carbon: number;
 }
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
@@ -14,6 +15,7 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   efficiency: 5,
   dcCharge: 3,
   cargo: 3,
+  carbon: 3,
 };
 
 const LS_KEY = "ev-decide-weights";
@@ -21,7 +23,7 @@ const LS_KEY = "ev-decide-weights";
 export function loadWeights(): ScoreWeights {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as ScoreWeights;
+    if (raw) return { ...DEFAULT_WEIGHTS, ...JSON.parse(raw) } as ScoreWeights;
   } catch {}
   return { ...DEFAULT_WEIGHTS };
 }
@@ -47,6 +49,10 @@ export function computeScores(
   const dcCharges = vehicles.map((v) => v.charge_dc_kw);
   const cargos = vehicles.map((v) => v.cargo_l);
 
+  // For carbon: null values are treated as median (0.5 normalised)
+  const carbonVals = vehicles.map((v) => v.carbon_kg_co2e);
+  const knownCarbons = carbonVals.filter((c): c is number => c !== null);
+
   function norm(val: number, vals: number[], lowerIsBetter = false): number {
     const min = Math.min(...vals);
     const max = Math.max(...vals);
@@ -54,8 +60,13 @@ export function computeScores(
     return lowerIsBetter ? (max - val) / (max - min) : (val - min) / (max - min);
   }
 
+  function normCarbon(val: number | null): number {
+    if (val === null || knownCarbons.length < 2) return 0.5;
+    return norm(val, knownCarbons, true);
+  }
+
   const totalWeight =
-    weights.price + weights.range + weights.efficiency + weights.dcCharge + weights.cargo;
+    weights.price + weights.range + weights.efficiency + weights.dcCharge + weights.cargo + weights.carbon;
 
   if (totalWeight === 0) {
     vehicles.forEach((v) => result.set(v.id, 50));
@@ -68,7 +79,8 @@ export function computeScores(
         weights.range * norm(ranges[i], ranges) +
         weights.efficiency * norm(efficiencies[i], efficiencies, true) +
         weights.dcCharge * norm(dcCharges[i], dcCharges) +
-        weights.cargo * norm(cargos[i], cargos)) /
+        weights.cargo * norm(cargos[i], cargos) +
+        weights.carbon * normCarbon(carbonVals[i])) /
       totalWeight;
     result.set(v.id, Math.round(score * 100));
   });
