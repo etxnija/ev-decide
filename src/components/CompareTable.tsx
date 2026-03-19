@@ -109,6 +109,15 @@ function makeRows(): RowDef[] {
       format: (v) => `${v.year}`,
       best: null,
     },
+    {
+      label: "TCO",
+      getValue: (v) => v.tco?.total_sek ?? null,
+      format: (v, currency, rate) =>
+        v.tco
+          ? `${formatPrice(v.tco.total_sek, currency, rate)} (${v.tco.years}yr)`
+          : "—",
+      best: "min",
+    },
   ];
 }
 

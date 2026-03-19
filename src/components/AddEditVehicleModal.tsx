@@ -35,6 +35,7 @@ const EMPTY_FORM: FormData = {
   width_mm: null,
   weight_kg: null,
   carbon_kg_co2e: null,
+  tco: null,
 };
 
 function generateId(form: FormData, existingIds: string[]): string {

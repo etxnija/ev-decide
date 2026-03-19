@@ -7,6 +7,7 @@ export interface ScoreWeights {
   dcCharge: number;
   cargo: number;
   carbon: number;
+  tco: number;
 }
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
@@ -16,6 +17,7 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   dcCharge: 3,
   cargo: 3,
   carbon: 3,
+  tco: 5,
 };
 
 const LS_KEY = "ev-decide-weights";
@@ -53,6 +55,10 @@ export function computeScores(
   const carbonVals = vehicles.map((v) => v.carbon_kg_co2e);
   const knownCarbons = carbonVals.filter((c): c is number => c !== null);
 
+  // For TCO: null values are treated as median (0.5 normalised)
+  const tcoVals = vehicles.map((v) => v.tco?.total_sek ?? null);
+  const knownTcos = tcoVals.filter((t): t is number => t !== null);
+
   function norm(val: number, vals: number[], lowerIsBetter = false): number {
     const min = Math.min(...vals);
     const max = Math.max(...vals);
@@ -65,8 +71,13 @@ export function computeScores(
     return norm(val, knownCarbons, true);
   }
 
+  function normTco(val: number | null): number {
+    if (val === null || knownTcos.length < 2) return 0.5;
+    return norm(val, knownTcos, true);
+  }
+
   const totalWeight =
-    weights.price + weights.range + weights.efficiency + weights.dcCharge + weights.cargo + weights.carbon;
+    weights.price + weights.range + weights.efficiency + weights.dcCharge + weights.cargo + weights.carbon + weights.tco;
 
   if (totalWeight === 0) {
     vehicles.forEach((v) => result.set(v.id, 50));
@@ -80,7 +91,8 @@ export function computeScores(
         weights.efficiency * norm(efficiencies[i], efficiencies, true) +
         weights.dcCharge * norm(dcCharges[i], dcCharges) +
         weights.cargo * norm(cargos[i], cargos) +
-        weights.carbon * normCarbon(carbonVals[i])) /
+        weights.carbon * normCarbon(carbonVals[i]) +
+        weights.tco * normTco(tcoVals[i])) /
       totalWeight;
     result.set(v.id, Math.round(score * 100));
   });

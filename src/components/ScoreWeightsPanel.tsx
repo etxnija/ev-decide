@@ -13,6 +13,7 @@ const WEIGHT_LABELS: { key: keyof ScoreWeights; label: string }[] = [
   { key: "dcCharge", label: "DC Charge Speed" },
   { key: "cargo", label: "Cargo Volume" },
   { key: "carbon", label: "Carbon footprint" },
+  { key: "tco", label: "Total Cost of Ownership" },
 ];
 
 export function ScoreWeightsPanel({ weights, onChange }: Props) {
@@ -32,7 +33,7 @@ export function ScoreWeightsPanel({ weights, onChange }: Props) {
         <span className="text-gray-400 text-xs">{open ? "▲ collapse" : "▼ expand"}</span>
       </button>
       {open && (
-        <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 border-t border-gray-100 pt-4">
+        <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 border-t border-gray-100 pt-4">
           {WEIGHT_LABELS.map(({ key, label }) => (
             <div key={key} className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-500">

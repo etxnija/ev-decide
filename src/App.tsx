@@ -9,6 +9,9 @@ import { CompareTable } from "./components/CompareTable";
 import { ScoreWeightsPanel } from "./components/ScoreWeightsPanel";
 import { AddEditVehicleModal } from "./components/AddEditVehicleModal";
 import { CarbonAdminModal } from "./components/CarbonAdminModal";
+import { TcoSettingsModal } from "./components/TcoSettingsModal";
+import { TcoBrandModal } from "./components/TcoBrandModal";
+import { useBrandTcoParams } from "./hooks/useBrandTcoParams";
 import {
   computeScores,
   loadWeights,
@@ -17,6 +20,7 @@ import {
 } from "./lib/scoring";
 import type { Currency } from "./lib/formatPrice";
 import { useGistSync } from "./hooks/useGistSync";
+import { calcTco, DEFAULT_TCO_SETTINGS, type TcoSettings } from "./lib/tco";
 
 const MAX_COMPARE = 4;
 const LS_KEY_SELECTION = "ev-decide-selection";
@@ -28,6 +32,7 @@ interface Settings {
   usdToSekRate: number;
   gistId: string;
   gistToken: string;
+  tco: TcoSettings;
 }
 
 function loadSelection(): string[] {
@@ -41,9 +46,20 @@ function loadSelection(): string[] {
 function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(LS_KEY_SETTINGS);
-    if (raw) return JSON.parse(raw) as Settings;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Settings>;
+      return {
+        apiKey: "",
+        exchangeRate: 11.5,
+        usdToSekRate: 10.5,
+        gistId: "",
+        gistToken: "",
+        ...parsed,
+        tco: { ...DEFAULT_TCO_SETTINGS, ...(parsed.tco ?? {}) },
+      };
+    }
   } catch {}
-  return { apiKey: "", exchangeRate: 11.5, usdToSekRate: 10.5, gistId: "", gistToken: "" };
+  return { apiKey: "", exchangeRate: 11.5, usdToSekRate: 10.5, gistId: "", gistToken: "", tco: { ...DEFAULT_TCO_SETTINGS } };
 }
 
 const DEFAULT_FILTERS: Filters = { maxPrice: 1_500_000, minRange: 0, makes: [] };
@@ -63,6 +79,9 @@ export default function App() {
     useCarbonIntensity(settings.usdToSekRate);
   const [showSettings, setShowSettings] = useState(false);
   const [showCarbonAdmin, setShowCarbonAdmin] = useState(false);
+  const [showTcoSettings, setShowTcoSettings] = useState(false);
+  const [showTcoBrandAdmin, setShowTcoBrandAdmin] = useState(false);
+  const { entries: brandTcoEntries, brandParamsMap, addEntry: addBrandEntry, updateEntry: updateBrandEntry, deleteEntry: deleteBrandEntry, replaceEntries: replaceBrandEntries } = useBrandTcoParams();
   const [addEditTarget, setAddEditTarget] = useState<
     { mode: "add" } | { mode: "edit"; vehicle: Vehicle } | null
   >(null);
@@ -195,6 +214,12 @@ export default function App() {
   function handleCarbonAdd(entry: CarbonEntry) {
     addEntry(entry);
     recalcVehiclesForMake(entry.make, null, entry.t_co2e_per_musd);
+  }
+
+  function handleCalculateTco(vehicleId: string) {
+    const v = vehicles.find((v) => v.id === vehicleId);
+    if (!v) return;
+    updateVehicle({ ...v, tco: calcTco(v, settings.tco, brandParamsMap[v.make]) });
   }
 
   const existingIds = useMemo(() => vehicles.map((v) => v.id), [vehicles]);
@@ -381,6 +406,23 @@ export default function App() {
                   Manage brands ({carbonEntries.length})
                 </button>
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500">
+                  TCO
+                </label>
+                <button
+                  onClick={() => setShowTcoSettings(true)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  TCO defaults
+                </button>
+                <button
+                  onClick={() => setShowTcoBrandAdmin(true)}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  Brand data ({brandTcoEntries.length})
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -445,6 +487,8 @@ export default function App() {
                     setAddEditTarget({ mode: "edit", vehicle })
                   }
                   onDelete={handleDelete}
+                  onCalculateTco={handleCalculateTco}
+                  tcoYears={settings.tco.years}
                 />
               ))}
             </div>
@@ -475,6 +519,29 @@ export default function App() {
           onUpdate={handleCarbonUpdate}
           onDelete={handleCarbonDelete}
           onClose={() => setShowCarbonAdmin(false)}
+        />
+      )}
+
+      {/* TCO settings modal */}
+      {showTcoSettings && (
+        <TcoSettingsModal
+          settings={settings.tco}
+          onChange={(tco) => setSettings((s) => ({ ...s, tco }))}
+          onClose={() => setShowTcoSettings(false)}
+        />
+      )}
+
+      {/* TCO brand data modal */}
+      {showTcoBrandAdmin && (
+        <TcoBrandModal
+          entries={brandTcoEntries}
+          allMakes={allMakes}
+          apiKey={settings.apiKey}
+          onAdd={addBrandEntry}
+          onUpdate={updateBrandEntry}
+          onDelete={deleteBrandEntry}
+          onReplace={replaceBrandEntries}
+          onClose={() => setShowTcoBrandAdmin(false)}
         />
       )}
     </div>

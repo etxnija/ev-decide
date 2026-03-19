@@ -15,6 +15,8 @@ interface VehicleCardProps {
   onNoteChange: (id: string, note: string) => void;
   onEdit: (v: Vehicle) => void;
   onDelete: (id: string) => void;
+  onCalculateTco: (id: string) => void;
+  tcoYears: number;
 }
 
 function scoreBadgeClass(score: number): string {
@@ -35,6 +37,8 @@ export function VehicleCard({
   onNoteChange,
   onEdit,
   onDelete,
+  onCalculateTco,
+  tcoYears,
 }: VehicleCardProps) {
   const disabled = !selected && !canAdd;
   const [showNote, setShowNote] = useState(!!note);
@@ -148,6 +152,38 @@ export function VehicleCard({
             <span>·</span>
             <span>{vehicle.carbon_kg_co2e.toLocaleString("sv-SE")} kg CO₂e</span>
           </>
+        )}
+      </div>
+
+      {/* TCO */}
+      <div className="border-t border-gray-100 pt-2">
+        {vehicle.tco == null ? (
+          <button
+            onClick={() => onCalculateTco(vehicle.id)}
+            className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+          >
+            Calculate TCO ({tcoYears}yr)
+          </button>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-700">
+                TCO ({vehicle.tco.years}yr): {vehicle.tco.total_sek.toLocaleString("sv-SE")} SEK
+              </span>
+              <button
+                onClick={() => onCalculateTco(vehicle.id)}
+                className="text-xs text-gray-400 hover:text-blue-500 transition-colors ml-2"
+                title="Recalculate"
+              >
+                ↻
+              </button>
+            </div>
+            <div className="text-xs text-gray-400 font-mono space-y-0.5">
+              <div>├ Electricity: {vehicle.tco.electricity_sek.toLocaleString("sv-SE")}</div>
+              <div>├ Maintenance: {vehicle.tco.maintenance_sek.toLocaleString("sv-SE")}</div>
+              <div>└ Resale: -{vehicle.tco.residual_sek.toLocaleString("sv-SE")}</div>
+            </div>
+          </div>
         )}
       </div>
 

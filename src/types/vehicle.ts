@@ -1,3 +1,5 @@
+import type { TcoResult } from "../lib/tco";
+
 export interface Vehicle {
   id: string;
   make: string;
@@ -18,4 +20,5 @@ export interface Vehicle {
   width_mm: number | null;
   weight_kg: number | null;
   carbon_kg_co2e: number | null;
+  tco: TcoResult | null;
 }
