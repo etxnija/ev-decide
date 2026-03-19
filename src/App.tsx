@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import type { Vehicle } from "./types/vehicle";
 import { useVehicles } from "./hooks/useVehicles";
 import { useNotes } from "./hooks/useNotes";
-import { useCarbonIntensity } from "./hooks/useCarbonIntensity";
+import { useCarbonIntensity, type CarbonEntry } from "./hooks/useCarbonIntensity";
 import { VehicleCard } from "./components/VehicleCard";
 import { FilterBar, type Filters } from "./components/FilterBar";
 import { CompareTable } from "./components/CompareTable";
@@ -25,6 +25,7 @@ const LS_KEY_SETTINGS = "ev-decide-settings";
 interface Settings {
   apiKey: string;
   exchangeRate: number;
+  usdToSekRate: number;
   gistId: string;
   gistToken: string;
 }
@@ -42,7 +43,7 @@ function loadSettings(): Settings {
     const raw = localStorage.getItem(LS_KEY_SETTINGS);
     if (raw) return JSON.parse(raw) as Settings;
   } catch {}
-  return { apiKey: "", exchangeRate: 11.5, gistId: "", gistToken: "" };
+  return { apiKey: "", exchangeRate: 11.5, usdToSekRate: 10.5, gistId: "", gistToken: "" };
 }
 
 const DEFAULT_FILTERS: Filters = { maxPrice: 1_500_000, minRange: 0, makes: [] };
@@ -50,8 +51,6 @@ const DEFAULT_FILTERS: Filters = { maxPrice: 1_500_000, minRange: 0, makes: [] }
 export default function App() {
   const { vehicles, addVehicle, updateVehicle, deleteVehicle, replaceVehicles } = useVehicles();
   const { notes, setNote, replaceNotes } = useNotes();
-  const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry, replaceEntries } =
-    useCarbonIntensity();
 
   const [selected, setSelected] = useState<string[]>(loadSelection);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -59,6 +58,9 @@ export default function App() {
   const [currency, setCurrency] = useState<Currency>("SEK");
   const [weights, setWeights] = useState<ScoreWeights>(loadWeights);
   const [settings, setSettings] = useState<Settings>(loadSettings);
+
+  const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry, replaceEntries } =
+    useCarbonIntensity(settings.usdToSekRate);
   const [showSettings, setShowSettings] = useState(false);
   const [showCarbonAdmin, setShowCarbonAdmin] = useState(false);
   const [addEditTarget, setAddEditTarget] = useState<
@@ -77,16 +79,21 @@ export default function App() {
     saveWeights(weights);
   }, [weights]);
 
-  const { status: syncStatus } = useGistSync(
-    settings.gistId,
-    settings.gistToken,
-    {
+  const syncPayload = useMemo(
+    () => ({
       vehicles,
       notes,
       carbonIntensity: carbonEntries,
       weights,
       selection: selected,
-    },
+    }),
+    [vehicles, notes, carbonEntries, weights, selected]
+  );
+
+  const { status: syncStatus } = useGistSync(
+    settings.gistId,
+    settings.gistToken,
+    syncPayload,
     {
       replaceVehicles,
       replaceNotes,
@@ -154,8 +161,9 @@ export default function App() {
     oldKg: number | null,
     newKg: number | null
   ) {
-    const oldI = oldKg !== null ? oldKg / 500000 : null;
-    const newI = newKg !== null ? newKg / 500000 : null;
+    const rate = settings.usdToSekRate;
+    const oldI = oldKg !== null ? oldKg / (1000 * rate) : null;
+    const newI = newKg !== null ? newKg / (1000 * rate) : null;
     vehicles.forEach((v) => {
       if (v.make !== make) return;
       const wasAuto =
@@ -170,23 +178,23 @@ export default function App() {
     });
   }
 
-  function handleCarbonUpdate(make: string, newKg: number) {
+  function handleCarbonUpdate(make: string, newVal: number) {
     const existing = carbonEntries.find((e) => e.make === make);
-    const oldKg = existing ? existing.kg_co2e_500k : null;
-    updateEntry(make, newKg);
-    recalcVehiclesForMake(make, oldKg, newKg);
+    const oldVal = existing ? existing.t_co2e_per_musd : null;
+    updateEntry(make, newVal);
+    recalcVehiclesForMake(make, oldVal, newVal);
   }
 
   function handleCarbonDelete(make: string) {
     const existing = carbonEntries.find((e) => e.make === make);
-    const oldKg = existing ? existing.kg_co2e_500k : null;
+    const oldVal = existing ? existing.t_co2e_per_musd : null;
     deleteEntry(make);
-    recalcVehiclesForMake(make, oldKg, null);
+    recalcVehiclesForMake(make, oldVal, null);
   }
 
-  function handleCarbonAdd(entry: { make: string; kg_co2e_500k: number }) {
+  function handleCarbonAdd(entry: CarbonEntry) {
     addEntry(entry);
-    recalcVehiclesForMake(entry.make, null, entry.kg_co2e_500k);
+    recalcVehiclesForMake(entry.make, null, entry.t_co2e_per_musd);
   }
 
   const existingIds = useMemo(() => vehicles.map((v) => v.id), [vehicles]);
@@ -303,6 +311,24 @@ export default function App() {
                     setSettings((s) => ({
                       ...s,
                       exchangeRate: Number(e.target.value) || 11.5,
+                    }))
+                  }
+                  step={0.1}
+                  min={1}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+              </div>
+              <div className="flex flex-col gap-1 min-w-32">
+                <label className="text-xs font-medium text-gray-500">
+                  USD/SEK rate (for carbon calculation)
+                </label>
+                <input
+                  type="number"
+                  value={settings.usdToSekRate}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      usdToSekRate: Number(e.target.value) || 10.5,
                     }))
                   }
                   step={0.1}
@@ -444,6 +470,7 @@ export default function App() {
       {showCarbonAdmin && (
         <CarbonAdminModal
           entries={carbonEntries}
+          usdToSekRate={settings.usdToSekRate}
           onAdd={handleCarbonAdd}
           onUpdate={handleCarbonUpdate}
           onDelete={handleCarbonDelete}

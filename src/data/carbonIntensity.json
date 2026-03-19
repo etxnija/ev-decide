@@ -1,9 +1,10 @@
 [
-  { "make": "Tesla",    "kg_co2e_500k": 30865 },
-  { "make": "BMW",      "kg_co2e_500k": 46081 },
-  { "make": "Mercedes", "kg_co2e_500k": 46359 },
-  { "make": "Volvo",    "kg_co2e_500k": 69423 },
-  { "make": "Kia",      "kg_co2e_500k": 73924 },
-  { "make": "Polestar", "kg_co2e_500k": 76312 },
-  { "make": "Toyota",   "kg_co2e_500k": 101979 }
+  { "make": "Tesla",    "t_co2e_per_musd": 573.48 },
+  { "make": "BMW",      "t_co2e_per_musd": 856.19 },
+  { "make": "Mercedes", "t_co2e_per_musd": 861.35 },
+  { "make": "Skoda",    "t_co2e_per_musd": 1114.62 },
+  { "make": "Volvo",    "t_co2e_per_musd": 1289.87 },
+  { "make": "Kia",      "t_co2e_per_musd": 1373.51 },
+  { "make": "Polestar", "t_co2e_per_musd": 1417.87 },
+  { "make": "Toyota",   "t_co2e_per_musd": 1894.76 }
 ]

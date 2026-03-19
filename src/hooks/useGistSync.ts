@@ -42,17 +42,26 @@ async function fetchGist(
   gistId: string,
   token: string
 ): Promise<{ content: string; updatedAt: string } | null> {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-    },
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const file = data.files?.[GIST_FILENAME];
-  if (!file) return null;
-  return { content: file.content as string, updatedAt: data.updated_at as string };
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[GistSync] GET failed: HTTP ${res.status}`, body);
+      return null;
+    }
+    const data = await res.json();
+    const file = data.files?.[GIST_FILENAME];
+    if (!file) return null;
+    return { content: file.content as string, updatedAt: data.updated_at as string };
+  } catch (err) {
+    console.error("[GistSync] GET network error:", err);
+    return null;
+  }
 }
 
 async function patchGist(
@@ -60,20 +69,29 @@ async function patchGist(
   token: string,
   payload: SyncPayload & { updatedAt: string }
 ): Promise<boolean> {
-  const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      files: {
-        [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) },
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
       },
-    }),
-  });
-  return res.ok;
+      body: JSON.stringify({
+        files: {
+          [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) },
+        },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[GistSync] PATCH failed: HTTP ${res.status}`, body);
+    }
+    return res.ok;
+  } catch (err) {
+    console.error("[GistSync] PATCH network error:", err);
+    return false;
+  }
 }
 
 function applyGistData(
@@ -111,6 +129,7 @@ export function useGistSync(
   const initialFetchDone = useRef(false);
   const payloadRef = useRef(payload);
   payloadRef.current = payload;
+  const lastPatchedRef = useRef<string>("");
 
   // Effect 1: mount fetch
   useEffect(() => {
@@ -149,12 +168,18 @@ export function useGistSync(
     if (!gistId || !gistToken || !initialFetchDone.current) return;
     setStatus("syncing");
     const timer = setTimeout(async () => {
+      const serialized = JSON.stringify(payloadRef.current);
+      if (serialized === lastPatchedRef.current) {
+        setStatus("synced");
+        return;
+      }
       const now = new Date().toISOString();
       const ok = await patchGist(gistId, gistToken, {
         ...payloadRef.current,
         updatedAt: now,
       });
       if (ok) {
+        lastPatchedRef.current = serialized;
         saveLocalUpdatedAt(now);
         setStatus("synced");
       } else {

@@ -3,35 +3,37 @@ import type { CarbonEntry } from "../hooks/useCarbonIntensity";
 
 interface Props {
   entries: CarbonEntry[];
+  usdToSekRate: number;
   onAdd: (entry: CarbonEntry) => void;
-  onUpdate: (make: string, newKg: number) => void;
+  onUpdate: (make: string, newVal: number) => void;
   onDelete: (make: string) => void;
   onClose: () => void;
 }
 
 export function CarbonAdminModal({
   entries,
+  usdToSekRate,
   onAdd,
   onUpdate,
   onDelete,
   onClose,
 }: Props) {
   const [editingMake, setEditingMake] = useState<string | null>(null);
-  const [editKg, setEditKg] = useState("");
+  const [editVal, setEditVal] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [newMake, setNewMake] = useState("");
-  const [newKg, setNewKg] = useState("");
+  const [newVal, setNewVal] = useState("");
 
   function startEdit(entry: CarbonEntry) {
     setEditingMake(entry.make);
-    setEditKg(String(entry.kg_co2e_500k));
+    setEditVal(String(entry.t_co2e_per_musd));
     setConfirmDelete(null);
   }
 
   function saveEdit(make: string) {
-    const kg = Number(editKg);
-    if (kg > 0) {
-      onUpdate(make, kg);
+    const val = Number(editVal);
+    if (val > 0) {
+      onUpdate(make, val);
     }
     setEditingMake(null);
   }
@@ -42,11 +44,15 @@ export function CarbonAdminModal({
   }
 
   function handleAdd() {
-    const kg = Number(newKg);
-    if (!newMake.trim() || !(kg > 0)) return;
-    onAdd({ make: newMake.trim(), kg_co2e_500k: kg });
+    const val = Number(newVal);
+    if (!newMake.trim() || !(val > 0)) return;
+    onAdd({ make: newMake.trim(), t_co2e_per_musd: val });
     setNewMake("");
-    setNewKg("");
+    setNewVal("");
+  }
+
+  function toKgPerSek(tPerMusd: number) {
+    return (tPerMusd / (1000 * usdToSekRate)).toFixed(6);
   }
 
   return (
@@ -57,7 +63,7 @@ export function CarbonAdminModal({
           <div>
             <h2 className="font-semibold text-gray-900">Carbon intensity data</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Reference: kg CO₂e per vehicle manufactured at 500,000 SEK price point
+              Reference: metric tonnes CO₂e per million USD of vehicle value
             </p>
           </div>
           <button
@@ -73,8 +79,8 @@ export function CarbonAdminModal({
             <thead>
               <tr className="text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-100">
                 <th className="text-left pb-2">Make</th>
-                <th className="text-right pb-2">kg CO₂e @ 500k SEK</th>
-                <th className="text-right pb-2">Intensity (kg/SEK)</th>
+                <th className="text-right pb-2">t CO₂e / million USD</th>
+                <th className="text-right pb-2">Intensity (kg CO₂e/SEK)</th>
                 <th className="text-right pb-2 w-32">Actions</th>
               </tr>
             </thead>
@@ -89,8 +95,8 @@ export function CarbonAdminModal({
                       <td className="py-2 text-right">
                         <input
                           type="number"
-                          value={editKg}
-                          onChange={(e) => setEditKg(e.target.value)}
+                          value={editVal}
+                          onChange={(e) => setEditVal(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") saveEdit(entry.make);
                             if (e.key === "Escape") setEditingMake(null);
@@ -101,8 +107,8 @@ export function CarbonAdminModal({
                         />
                       </td>
                       <td className="py-2 text-right text-gray-400">
-                        {Number(editKg) > 0
-                          ? (Number(editKg) / 500000).toFixed(6)
+                        {Number(editVal) > 0
+                          ? toKgPerSek(Number(editVal))
                           : "—"}
                       </td>
                       <td className="py-2 text-right">
@@ -128,10 +134,10 @@ export function CarbonAdminModal({
                         {entry.make}
                       </td>
                       <td className="py-2 text-right text-gray-700">
-                        {entry.kg_co2e_500k.toLocaleString()}
+                        {entry.t_co2e_per_musd.toLocaleString()}
                       </td>
                       <td className="py-2 text-right text-gray-400">
-                        {(entry.kg_co2e_500k / 500000).toFixed(6)}
+                        {toKgPerSek(entry.t_co2e_per_musd)}
                       </td>
                       <td className="py-2 text-right">
                         {confirmDelete === entry.make ? (
@@ -185,23 +191,23 @@ export function CarbonAdminModal({
                 <td className="pt-3 pl-2">
                   <input
                     type="number"
-                    value={newKg}
-                    onChange={(e) => setNewKg(e.target.value)}
+                    value={newVal}
+                    onChange={(e) => setNewVal(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                    placeholder="e.g. 50000"
+                    placeholder="e.g. 1000"
                     className="border border-gray-200 rounded px-2 py-1 text-sm text-right w-full focus:outline-none focus:ring-1 focus:ring-blue-400"
                     min={1}
                   />
                 </td>
                 <td className="pt-3 pl-2 text-right text-gray-400 text-xs">
-                  {Number(newKg) > 0
-                    ? (Number(newKg) / 500000).toFixed(6)
+                  {Number(newVal) > 0
+                    ? toKgPerSek(Number(newVal))
                     : "—"}
                 </td>
                 <td className="pt-3 pl-2 text-right">
                   <button
                     onClick={handleAdd}
-                    disabled={!newMake.trim() || !(Number(newKg) > 0)}
+                    disabled={!newMake.trim() || !(Number(newVal) > 0)}
                     className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Add
