@@ -11,6 +11,7 @@ import { AddEditVehicleModal } from "./components/AddEditVehicleModal";
 import { CarbonAdminModal } from "./components/CarbonAdminModal";
 import { TcoSettingsModal } from "./components/TcoSettingsModal";
 import { TcoBrandModal } from "./components/TcoBrandModal";
+import { HelpModal } from "./components/HelpModal";
 import { useBrandTcoParams } from "./hooks/useBrandTcoParams";
 import {
   computeScores,
@@ -78,6 +79,7 @@ export default function App() {
   const { entries: carbonEntries, intensityMap, addEntry, updateEntry, deleteEntry, replaceEntries } =
     useCarbonIntensity(settings.usdToSekRate);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showCarbonAdmin, setShowCarbonAdmin] = useState(false);
   const [showTcoSettings, setShowTcoSettings] = useState(false);
   const [showTcoBrandAdmin, setShowTcoBrandAdmin] = useState(false);
@@ -292,6 +294,15 @@ export default function App() {
                   : "Idle"}
               </span>
             )}
+
+            {/* Help */}
+            <button
+              onClick={() => setShowHelp(true)}
+              className="text-gray-400 hover:text-gray-700 text-lg px-1 transition-colors"
+              title="Getting started"
+            >
+              ?
+            </button>
 
             {/* Settings gear */}
             <button
@@ -530,6 +541,9 @@ export default function App() {
           onClose={() => setShowTcoSettings(false)}
         />
       )}
+
+      {/* Help modal */}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       {/* TCO brand data modal */}
       {showTcoBrandAdmin && (
