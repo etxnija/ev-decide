@@ -162,13 +162,13 @@ export function VehicleCard({
             onClick={() => onCalculateTco(vehicle.id)}
             className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
           >
-            Calculate TCO ({tcoYears}yr)
+            🌮 Calculate TCO ({tcoYears}yr)
           </button>
         ) : (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-700">
-                TCO ({vehicle.tco.years}yr): {vehicle.tco.total_sek.toLocaleString("sv-SE")} SEK
+                🌮 TCO ({vehicle.tco.years}yr): {vehicle.tco.total_sek.toLocaleString("sv-SE")} SEK
               </span>
               <button
                 onClick={() => onCalculateTco(vehicle.id)}

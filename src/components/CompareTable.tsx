@@ -110,7 +110,7 @@ function makeRows(): RowDef[] {
       best: null,
     },
     {
-      label: "TCO",
+      label: "🌮 TCO",
       getValue: (v) => v.tco?.total_sek ?? null,
       format: (v, currency, rate) =>
         v.tco

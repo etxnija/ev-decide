@@ -95,7 +95,7 @@ export function TcoBrandModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-gray-900">Brand TCO data</h2>
+            <h2 className="font-semibold text-gray-900">🌮 Brand TCO data</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Per-brand warranty, depreciation and maintenance estimates
             </p>

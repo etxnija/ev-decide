@@ -37,7 +37,7 @@ export function TcoSettingsModal({ settings, onChange, onClose }: Props) {
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-gray-900">TCO defaults</h2>
+            <h2 className="font-semibold text-gray-900">🌮 TCO defaults</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Used when calculating total cost of ownership
             </p>

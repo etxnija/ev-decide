@@ -13,7 +13,7 @@ const WEIGHT_LABELS: { key: keyof ScoreWeights; label: string }[] = [
   { key: "dcCharge", label: "DC Charge Speed" },
   { key: "cargo", label: "Cargo Volume" },
   { key: "carbon", label: "Carbon footprint" },
-  { key: "tco", label: "Total Cost of Ownership" },
+  { key: "tco", label: "🌮 Total Cost of Ownership" },
 ];
 
 export function ScoreWeightsPanel({ weights, onChange }: Props) {
